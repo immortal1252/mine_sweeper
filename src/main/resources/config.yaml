@@ -1,0 +1,17 @@
+numWidth: 30
+numHeight: 16
+numMine: 99
+cellSize: 30
+id2name:
+  0: media/celldown.png
+  1: media/cell1.png
+  2: media/cell2.png
+  3: media/cell3.png
+  4: media/cell4.png
+  5: media/cell5.png
+  6: media/cell6.png
+  7: media/cell7.png
+  8: media/cell8.png
+  9: media/blast.png
+  10: media/cellup.png
+  11: media/cellflag.png
