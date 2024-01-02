@@ -110,7 +110,7 @@ public class MainWindow extends Application {
 
         Scene scene = new Scene(body, cfg.getNumWidth() * cfg.getCellSize() + 40, cfg.getNumHeight() * cfg.getCellSize() + 80);
         scene.setFill(Color.GRAY);
-        primaryStage.setTitle("Scalable GridPane Example");
+        primaryStage.setTitle("Scalable GridPane spg");
         primaryStage.setScene(scene);
         primaryStage.show();
     }

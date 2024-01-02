@@ -1,4 +1,4 @@
-module com.example {
+module com.spg {
     requires javafx.controls;
     requires javafx.fxml;
     requires com.fasterxml.jackson.databind;
