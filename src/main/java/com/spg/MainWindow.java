@@ -21,10 +21,11 @@ import javafx.util.Duration;
 import org.yaml.snakeyaml.Yaml;
 
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
+import java.util.Map.Entry;
 
 public class MainWindow extends Application {
     private Configure cfg;
@@ -78,7 +79,7 @@ public class MainWindow extends Application {
             System.out.println(id + "not eixst");
             return;
         }
-        imageViews[pos.getRow()][pos.getCol()].setImage(image);
+        imageViews[pos.r][pos.c].setImage(image);
     }
 
     @Override
@@ -127,11 +128,9 @@ public class MainWindow extends Application {
 
     private void update(ClickStatus clickStatus) {
         if (clickStatus == null) return;
-        List<Pos> cell2Update = clickStatus.getCell2update();
-        List<Integer> cellCls = clickStatus.getCellCls();
-        for (int i = 0; i < cell2Update.size(); i++) {
-            Pos pos = cell2Update.get(i);
-            setImage(pos, cellCls.get(i));
+        Map<Pos, Integer> cell2Update = clickStatus.getCell2update();
+        for (Entry<Pos, Integer> entry : cell2Update.entrySet()) {
+            setImage(entry.getKey(), entry.getValue());
         }
     }
 
@@ -165,7 +164,7 @@ public class MainWindow extends Application {
             clickStatus = game.pressNine(pos);
         }
         if (!clickStatus.getCell2update().isEmpty()) {
-            lastPressed = clickStatus.getCell2update();
+            lastPressed = new ArrayList<>(clickStatus.getCell2update().keySet());
         }
         update(clickStatus);
     }
@@ -183,7 +182,7 @@ public class MainWindow extends Application {
         }
 
         if (clickStatus != null && !clickStatus.getCell2update().isEmpty()) {
-            lastPressed = clickStatus.getCell2update();
+            lastPressed = new ArrayList<>(clickStatus.getCell2update().keySet());
         }
         update(clickStatus);
     }

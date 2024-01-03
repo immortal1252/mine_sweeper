@@ -1,33 +1,28 @@
 package com.spg;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ClickStatus {
-    private final List<Pos> cell2update = new ArrayList<>();
-    private final List<Integer> cellCls = new ArrayList<>();
+    private final Map<Pos, Integer> cell2update = new HashMap<>();
 
     private boolean fail;
 
     ClickStatus() {
     }
 
-    public void add(Pos pos, Integer cls) {
-        cell2update.add(pos);
-        cellCls.add(cls);
+
+    public void put(Pos pos, Integer cls) {
+        cell2update.put(pos, cls);
     }
 
-    public void addAll(List<Pos> posList, List<Integer> clsList) {
-        cell2update.addAll(posList);
-        cellCls.addAll(clsList);
+    public void put(ClickStatus another) {
+        cell2update.putAll(another.getCell2update());
     }
 
-    public List<Pos> getCell2update() {
+
+    public Map<Pos, Integer> getCell2update() {
         return cell2update;
-    }
-
-    public List<Integer> getCellCls() {
-        return cellCls;
     }
 
     public boolean isFail() {
