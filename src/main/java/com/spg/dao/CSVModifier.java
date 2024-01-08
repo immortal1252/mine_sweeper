@@ -2,113 +2,116 @@ package com.spg.dao;
 
 import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.spg.anno.DataAnno;
 
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.LocalDate;
+import java.util.*;
 
 public class CSVModifier<T> {
-    Class<T> clazz;
+    private final Class<T> clazz;
     private final String savePath;
-    private String[] chNames;
-    //中文名
-    private final List<Method> setMethods = new ArrayList<>();
-    //set方法
-    private final List<Method> getMethods = new ArrayList<>();
-    //get方法
-    private final Logger logger = LogManager.getLogger();
 
+    private final Map<String, Field> name2field = new HashMap<>();
+    private final List<T> data = new ArrayList<>();
 
-    public CSVModifier(Class<T> clazz, String savePath) {
+    public CSVModifier(Class<T> clazz) throws Exception {
         this.clazz = clazz;
-        this.savePath = savePath;
+        DataAnno clazzAnnotation = clazz.getAnnotation(DataAnno.class);
+        this.savePath = clazzAnnotation.name();
+        Field[] declaredFields = clazz.getDeclaredFields();
+        for (Field field : declaredFields) {
+            DataAnno annotation = field.getAnnotation(DataAnno.class);
+            if (annotation == null)
+                continue;
+            field.setAccessible(true);
+            String name = annotation.name();
+            name2field.put(name, field);
+        }
+        loadData();
     }
 
-    public void save(T data) throws IOException, InvocationTargetException, IllegalAccessException {
+    public List<T> getData() {
+        return data;
+    }
+
+    private void setByName(T obj, String name, String value) throws IllegalAccessException {
+        Field field = name2field.get(name);
+        if (field == null) {
+            System.out.printf("%s not exist%n", name);
+            return;
+        }
+        Class<?> type = field.getType();
+        if (type == Integer.class) {
+            int valueInt = Integer.parseInt(value);
+            field.set(obj, valueInt);
+        } else if (type == Double.class) {
+            double valueDouble = Double.parseDouble(value);
+            field.set(obj, valueDouble);
+        } else if (type == LocalDate.class) {
+            LocalDate valueDate = LocalDate.parse(value);
+            field.set(obj, valueDate);
+        }
+    }
+
+    private String getByName(T obj, String name) throws IllegalAccessException {
+        Field field = name2field.get(name);
+        if (field == null) {
+            System.out.printf("%s not exist%n", name);
+            return null;
+        }
+        Object value = field.get(obj);
+        return String.valueOf(value);
+    }
+
+    private void loadData() throws Exception {
+        System.out.println("load");
         Path path = Paths.get(savePath);
-        boolean exist = true;
         //创建文件
         if (Files.notExists(path)) {
-            Files.createFile(path);
-            exist = false;
+            return;
         }
-        try (CSVWriter csvWriter = new CSVWriter(new FileWriter(savePath, true))) {
-            //写入表头
-            if (!exist) {
-                csvWriter.writeNext(chNames);
-            }
-            //写入数据
-            List<String> row = new ArrayList<>();
-            for (Method getMethod : getMethods) {
-                String value = getMethod.invoke(data).toString();
-                row.add(value);
-            }
-            csvWriter.writeNext(row.toArray(new String[0]));
-        }
-    }
 
-    public List<T> read() throws Exception {
-        Path path = Paths.get(savePath);
-        if (Files.notExists(path))
-            return null;
-        List<T> datas = new ArrayList<>();
         try (CSVReader csvReader = new CSVReader(new FileReader(savePath))) {
-            csvReader.readNext();
+            String[] names = csvReader.readNext();
+            if (!Arrays.equals(names, name2field.keySet().toArray(new String[0]))) {
+                return;
+            }
             String[] row;
             while ((row = csvReader.readNext()) != null) {
-                T t = clazz.getConstructor().newInstance();
-                for (int i = 0; i < setMethods.size(); i++) {
-                    setMethods.get(i).invoke(t, row[i]);
+                T t = clazz.getDeclaredConstructor().newInstance();
+                for (int i = 0; i < row.length; i++) {
+                    setByName(t, names[i], row[i]);
                 }
-                datas.add(t);
+                data.add(t);
             }
         }
-        return datas;
+
     }
 
-    public void setChNames(String[] chNames) {
-        this.chNames = chNames;
-    }
 
-    public void setSetMethods(String[] setMethods) throws NoSuchMethodException {
-        for (String setMethod : setMethods) {
-            if (setMethod == null) {
-                this.setMethods.add(null);
-                continue;
+    public void close() throws IOException, IllegalAccessException {
+        Path path = Paths.get(savePath);
+        if (Files.notExists(path)) {
+            Files.createFile(path);
+        }
+        try (CSVWriter csvWriter = new CSVWriter(new FileWriter(savePath))) {
+            String[] names = name2field.keySet().toArray(new String[0]);
+            csvWriter.writeNext(names);
+            for (T t : data) {
+                String[] row = new String[names.length];
+                for (int i = 0; i < names.length; i++) {
+                    row[i] = getByName(t, names[i]);
+                }
+                csvWriter.writeNext(row);
             }
-            Method method = clazz.getDeclaredMethod(setMethod, String.class);
-            this.setMethods.add(method);
         }
     }
 
-    public void setGetMethods(String[] getMethods) throws NoSuchMethodException {
-        for (String getMethod : getMethods) {
-            if (getMethod == null) {
-                this.getMethods.add(null);
-                continue;
-            }
-            Method method = clazz.getDeclaredMethod(getMethod);
-            this.getMethods.add(method);
-        }
-    }
-
-//    public static void main(String[] args) throws NoSuchMethodException, IOException, InvocationTargetException, IllegalAccessException {
-//        BaseDao<Result> resultBaseDao = new BaseDao<>(Result.class, "history.csv");
-//        String[] getNames = {"getThreeBV", "getThreeBVPS", "getElapsed", "getDate"};
-//        String[] setNames = {"setThreeBVFromString", null, "setElapsedFromString", "setDateFromString"};
-//        String[] chNames = {"3bv", "3bv/s", "时间", "日期"};
-//        resultBaseDao.setChNames(chNames);
-//        resultBaseDao.setSetMethods(setNames);
-//        resultBaseDao.setGetMethods(getNames);
-//        resultBaseDao.save(new Result(30, 20.0, LocalDate.now()));
-//    }
 }

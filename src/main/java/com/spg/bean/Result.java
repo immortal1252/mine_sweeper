@@ -1,14 +1,20 @@
 package com.spg.bean;
 
-import java.text.DecimalFormat;
+import com.spg.anno.DataAnno;
+
 import java.time.LocalDate;
 
 
+@DataAnno(name = "history.csv")
 public class Result {
+    @DataAnno(name = "3bv")
     private Integer threeBV;
+    @DataAnno(name = "时间")
     private Double elapsed;
+    @DataAnno(name = "日期")
     private LocalDate date;
-    private static final DecimalFormat decimalFormat = new DecimalFormat("0.00");
+    @DataAnno(name = "3bv/s")
+    private Double threeBVPS;
 
     @Override
     public String toString() {
@@ -16,20 +22,38 @@ public class Result {
                 "threeBV=" + threeBV +
                 ", elapsed=" + elapsed +
                 ", date=" + date +
+                ", threeBVPS=" + threeBVPS +
                 '}';
     }
 
-    Result() {
+    public Result() {
     }
 
     public Result(Integer threeBV, Double elpased, LocalDate date) {
         this.threeBV = threeBV;
         this.elapsed = elpased;
         this.date = date;
+        this.threeBVPS = threeBV / elpased;
+    }
+
+    public void setThreeBV(Integer threeBV) {
+        this.threeBV = threeBV;
+    }
+
+    public void setElapsed(Double elapsed) {
+        this.elapsed = elapsed;
+    }
+
+    public void setDate(LocalDate date) {
+        this.date = date;
+    }
+
+    public void setThreeBVPS(Double threeBVPS) {
+        this.threeBVPS = threeBVPS;
     }
 
     public Double getThreeBVPS() {
-        return threeBV / elapsed;
+        return this.threeBVPS;
     }
 
 
@@ -45,18 +69,5 @@ public class Result {
         return date;
     }
 
-    public void setThreeBVFromString(String threeBV) {
-        this.threeBV = Integer.parseInt(threeBV);
-    }
-
-
-    public void setElapsedFromString(String elapsed) {
-        this.elapsed = Double.parseDouble(elapsed);
-    }
-
-
-    public void setDateFromString(String date) {
-        this.date = LocalDate.parse(date);
-    }
 
 }

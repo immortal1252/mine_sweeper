@@ -1,6 +1,7 @@
 package com.spg;
 
 import com.spg.bean.Result;
+import com.spg.service.RecordService;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Application;
@@ -20,6 +21,8 @@ import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.yaml.snakeyaml.Yaml;
 
 import java.net.URL;
@@ -33,17 +36,20 @@ public class MainWindow extends Application {
     private Configure cfg;
     private Game game;
     private Auto auto;
+    private RecordService recordService;
     private Text timerText = new Text();
     private Text safeLeftText = new Text();
     private ImageView[][] imageViews;
     private final Map<Integer, Image> imageMap = new HashMap<>();
     private boolean firstClick = true;
+    private final Logger logger = LogManager.getLogger();
     // 毫秒
     private int elapsed;
     private Timeline timeline;
     private boolean fail = false;
     private List<Pos> lastPressed;
     private boolean leftAvailable = false;
+
     // 当且仅当左键按下后,再抬起才触发 单点
     // 按下双键,之后抬起右键,再抬起左键这一次是什么都不触发的
 
@@ -76,6 +82,7 @@ public class MainWindow extends Application {
         }
         game = new Game(cfg.getNumWidth(), cfg.getNumHeight(), cfg.getNumMine());
         auto = new Auto(game);
+        recordService = new RecordService();
     }
 
     private void setImage(Pos pos, int id) {
@@ -177,6 +184,11 @@ public class MainWindow extends Application {
         alert.setHeaderText("header");
         alert.setContentText(result.toString());
         alert.show();
+        try {
+            recordService.addSuccess(result);
+        } catch (Exception e) {
+            logger.error("{}", e.getMessage(), e);
+        }
     }
 
     private void mousePressed(MouseEvent event) {
@@ -315,6 +327,12 @@ public class MainWindow extends Application {
             }
         }
         return gridPane;
+    }
+
+    @Override
+    public void stop() throws Exception {
+        super.stop();
+        recordService.close();
     }
 
     public static void main(String[] args) {

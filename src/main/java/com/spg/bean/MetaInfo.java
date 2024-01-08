@@ -1,13 +1,22 @@
 package com.spg.bean;
 
+import com.spg.anno.DataAnno;
+
+@DataAnno(name = "meta.csv")
 public class MetaInfo {
 
-    private Integer mistake;
-    private Integer badluck;
-    private Integer success;
-    private Integer maxWinStreak;
-    private Integer maxLossStreak;
-    private Integer currStreak;
+    @DataAnno(name = "失误次数")
+    private Integer mistake = 0;
+    @DataAnno(name = "运气次数")
+    private Integer badluck = 0;
+    @DataAnno(name = "胜场")
+    private Integer success = 0;
+    @DataAnno(name = "最大连胜")
+    private Integer maxWinStreak = 0;
+    @DataAnno(name = "最大连败")
+    private Integer maxLossStreak = 0;
+    @DataAnno(name = "当前连胜")
+    private Integer currStreak = 0;
 
     public Integer getMaxWinStreak() {
         return maxWinStreak;
