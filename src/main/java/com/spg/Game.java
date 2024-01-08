@@ -1,6 +1,9 @@
 package com.spg;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Random;
 
 public class Game {
     public enum Status {
@@ -71,7 +74,8 @@ public class Game {
         safe.add(pos2id(pos));
         while (mineSet.size() < numMine) {
             int mineId = random.nextInt(numHeight * numWidth);
-            if (safe.contains(mineId)) continue;
+            if (safe.contains(mineId))
+                continue;
             mineSet.add(mineId);
         }
         for (int mindId : mineSet) {
@@ -83,7 +87,9 @@ public class Game {
                 if (board[r][c] == 9) continue;
                 int mine = 0;
                 for (Pos posT : get_surround(new Pos(r, c))) {
-                    if (board[posT.r][posT.c] == 9) mine++;
+                    if (board[posT.r][posT.c] == 9) {
+                        mine++;
+                    }
                 }
                 board[r][c] = mine;
             }
@@ -129,6 +135,7 @@ public class Game {
     }
 
     public ClickStatus openOne(Pos pos) {
+        System.out.println("open" + pos);
         ClickStatus clickStatus = new ClickStatus();
         int r = pos.r;
         int c = pos.c;
@@ -180,15 +187,21 @@ public class Game {
 
     public int[][] getKnown() {
         // 对机器扫雷暴露的接口,将打开的格子暴露,其余全部为-1
-        int[][] ret = Arrays.copyOf(board, board.length);
+        int[][] ret = new int[numHeight][numWidth];
         for (int i = 0; i < numHeight; i++) {
             for (int j = 0; j < numWidth; j++) {
-                if (status[i][j] != Status.OPENED) {
-                    ret[i][j] = -1;
-                }
+                ret[i][j] = status[i][j] != Status.OPENED ? -1 : board[i][j];
             }
         }
         return ret;
+    }
+
+    public int getSafeGridLeft() {
+        return safeGridLeft;
+    }
+
+    public boolean success() {
+        return safeGridLeft == 0;
     }
 
     public int getNumWidth() {

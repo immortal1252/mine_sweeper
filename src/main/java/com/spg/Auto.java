@@ -4,26 +4,24 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.lang.reflect.Field;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class Auto {
     private final Logger logger = LogManager.getLogger();
 
     class MineSet {
-        int id;
+        Pos pos;
         int ukMineNum;
         //未知雷个数
-        Set<Integer> ukSet = new HashSet<>();
-        // 该集合的UK格子id
+        Set<Pos> ukSet = new HashSet<>();
+        // 未知格子集合
 
         public MineSet(Pos pos) {
-            this.id = game.pos2id(pos);
+            this.pos = new Pos(pos.r, pos.c);
             this.ukMineNum = openedBoard[pos.r][pos.c];
             for (Pos posT : game.get_surround(pos)) {
                 if (openedBoard[posT.r][posT.c] == -1) {
-                    this.ukSet.add(game.pos2id(posT));
+                    this.ukSet.add(posT);
                 } else if (openedBoard[posT.r][posT.c] == 9) {
                     ukMineNum--;
                 }
@@ -31,171 +29,215 @@ public class Auto {
         }
     }
 
-    private final Game game;
+    private Game game;
+
+    public void setGame(Game game) {
+        this.game = game;
+    }
 
     private int[][] openedBoard;
+    // -1是未知,-2是可以点开
 
     public Auto(Game game) {
         this.game = game;
     }
 
-    private ClickStatus markMine() {
-        // noflag标雷
-        ClickStatus clickStatus = new ClickStatus();
-        for (int i = 0; i < game.getNumHeight(); i++) {
-            for (int j = 0; j < game.getNumWidth(); j++) {
-                if (openedBoard[i][j] < 1 || openedBoard[i][j] > 8)
-                    continue;
-                MineSet mineSet = new MineSet(new Pos(i, j));
-                ClickStatus clickStatusT = singleSet(mineSet);
-                clickStatus.put(clickStatusT);
-            }
-        }
-        return clickStatus;
+    private void markMine() {
+//        // noflag标雷
+//        ClickStatus clickStatus = new ClickStatus();
+//        for (int i = 0; i < game.getNumHeight(); i++) {
+//            for (int j = 0; j < game.getNumWidth(); j++) {
+//                if (openedBoard[i][j] < 1 || openedBoard[i][j] > 8)
+//                    continue;
+//                MineSet mineSet = new MineSet(new Pos(i, j));
+////                ClickStatus clickStatusT = singleSet(mineSet);
+//                clickStatus.put(clickStatusT);
+//            }
+//        }
+//        return clickStatus;
     }
 
-    public ClickStatus check() {
+    private void updateOpenBoard() {
+        int[][] known = game.getKnown();
         if (openedBoard == null) {
-            openedBoard = game.getKnown();
+            openedBoard = known;
+        } else {
+            for (int i = 0; i < game.getNumHeight(); i++) {
+                for (int j = 0; j < game.getNumWidth(); j++) {
+                    if (openedBoard[i][j] == -1 || openedBoard[i][j] == -2) {
+                        openedBoard[i][j] = known[i][j];
+                    }
+                }
+            }
         }
-        ClickStatus clickStatus = new ClickStatus();
+    }
+
+    public List<Pos> check() {
+        updateOpenBoard();
         while (true) {
-            ClickStatus clickStatusT = checkOnce();
-            int oldSize = clickStatus.getCell2update().size();
-            clickStatus.put(clickStatusT);
-            int newSize = clickStatus.getCell2update().size();
-            if (newSize == oldSize)
+            boolean change = checkOnce();
+            if (!change)
                 break;
         }
-        return clickStatus;
+        List<Pos> ret = new ArrayList<>();
+        for (int i = 0; i < game.getNumHeight(); i++) {
+            for (int j = 0; j < game.getNumWidth(); j++) {
+                if (openedBoard[i][j] == -2) {
+                    ret.add(new Pos(i, j));
+                }
+            }
+        }
+        return ret;
     }
 
-    public ClickStatus checkOnce() {
+    private boolean checkOnce() {
         for (int i = 0; i < game.getNumHeight(); i++) {
             for (int j = 0; j < game.getNumWidth(); j++) {
                 if (openedBoard[i][j] < 1 || openedBoard[i][j] > 8)
                     continue;
                 MineSet mineSet = new MineSet(new Pos(i, j));
-                ClickStatus clickStatus = singleSet(mineSet);
-                if (!clickStatus.getCell2update().isEmpty())
-                    return clickStatus;
-                clickStatus = doubleSet(mineSet);
-                if (!clickStatus.getCell2update().isEmpty()) {
-                    return clickStatus;
-                }
-                //TODO TripleSet
+                if (mineSet.ukSet.isEmpty())
+                    continue;
+                boolean change = singleSet(mineSet);
+                if (change)
+                    return true;
+                change = doubleSet(mineSet);
+                if (change)
+                    return true;
             }
         }
-        return new ClickStatus();
+        return false;
     }
 
-    private ClickStatus singleSet(MineSet mineSet) {
-        ClickStatus clickStatus = new ClickStatus();
+
+    private boolean singleSet(MineSet mineSet) {
+        boolean change = false;
         //未知全是雷
         if (mineSet.ukMineNum == mineSet.ukSet.size()) {
-            for (int id : mineSet.ukSet) {
-                Pos pos = game.id2pos(id);
-                openedBoard[pos.r][pos.c] = 9;
+            for (Pos posT : mineSet.ukSet) {
+                change = true;
+                openedBoard[posT.r][posT.c] = 9;
             }
         }
         // 未知全不是雷
         if (mineSet.ukMineNum == 0) {
-            for (int id : mineSet.ukSet) {
-                Pos pos = game.id2pos(id);
-                clickStatus.put(pos, 12);
+            for (Pos posT : mineSet.ukSet) {
+                change = true;
+                openedBoard[posT.r][posT.c] = -2;
             }
         }
-        return clickStatus;
+        return change;
     }
 
-    private ClickStatus doubleSet(MineSet mineSet) {
-        ClickStatus clickStatus = new ClickStatus();
+    private boolean doubleSet(MineSet mineSet) {
         int[][] next = {{0, 1}, {1, 0}, {1, 1}};
         for (int[] nextT : next) {
-            Pos pos = game.id2pos(mineSet.id);
-            MineSet mineSet1 = new MineSet(new Pos(pos.r + nextT[0], pos.c + nextT[1]));
-            ClickStatus clickStatusT;
+            Pos pos = mineSet.pos;
+            int nextR = pos.r + nextT[0];
+            int nextC = pos.c + nextT[1];
+            if (nextR < 0 || nextR >= game.getNumHeight() || nextC < 0 || nextC >= game.getNumWidth() ||
+                    openedBoard[nextR][nextC] < 1 || openedBoard[nextR][nextC] > 8)
+                continue;
+            MineSet mineSet1 = new MineSet(new Pos(nextR, nextC));
             if (mineSet.ukMineNum == mineSet1.ukMineNum) {
-                clickStatusT = equalFormula(mineSet, mineSet1);
+                if (equalFormula(mineSet, mineSet1))
+                    return true;
             } else {
-                clickStatusT = subFormula(mineSet, mineSet1);
+                if (subFormula(mineSet, mineSet1))
+                    return true;
             }
-            clickStatus.put(clickStatusT);
         }
-        return clickStatus;
+        return false;
     }
 
-    private ClickStatus subFormula(MineSet a, MineSet b) {
+    private boolean subFormula(MineSet a, MineSet b) {
+        boolean change = false;
         // a<b
-        ClickStatus clickStatus = new ClickStatus();
         if (a.ukMineNum > b.ukMineNum) {
             MineSet t = a;
             a = b;
             b = t;
         }
-        Set<Integer> b_a = new HashSet<>(b.ukSet);
+        Set<Pos> b_a = new HashSet<>(b.ukSet);
         b_a.removeAll(a.ukSet);
         if (b_a.size() == (b.ukMineNum - a.ukMineNum)) {
-            for (int id : b_a) {
-                Pos pos = game.id2pos(id);
-                openedBoard[pos.r][pos.c] = 9;
+            for (Pos posT : b_a) {
+                change = true;
+                openedBoard[posT.r][posT.c] = 9;
             }
-            Set<Integer> a_b = new HashSet<>(a.ukSet);
+            Set<Pos> a_b = new HashSet<>(a.ukSet);
             a_b.removeAll(b.ukSet);
-            for (int id : a_b) {
-                Pos pos = game.id2pos(id);
-                clickStatus.put(pos, 12);
+            for (Pos posT : a_b) {
+                change = true;
+                openedBoard[posT.r][posT.c] = -2;
             }
         }
-        return clickStatus;
+        return change;
     }
 
-    private ClickStatus equalFormula(MineSet a, MineSet b) {
-        ClickStatus clickStatus = new ClickStatus();
-        Set<Integer> a_b = new HashSet<>(a.ukSet);
+    private boolean equalFormula(MineSet a, MineSet b) {
+        boolean change = false;
+        Set<Pos> a_b = new HashSet<>(a.ukSet);
         a_b.removeAll(b.ukSet);
-        Set<Integer> b_a = new HashSet<>(b.ukSet);
+        Set<Pos> b_a = new HashSet<>(b.ukSet);
         b_a.removeAll(a.ukSet);
         if (a_b.isEmpty()) {
-            for (int id : b_a) {
-                Pos pos = game.id2pos(id);
-                clickStatus.put(pos, 12);
+            for (Pos posT : b_a) {
+                change = true;
+                openedBoard[posT.r][posT.c] = -2;
             }
         }
         if (b_a.isEmpty()) {
-            for (int id : a_b) {
-                Pos pos = game.id2pos(id);
-                clickStatus.put(pos, 12);
+            for (Pos posT : a_b) {
+                change = true;
+                openedBoard[posT.r][posT.c] = -2;
             }
         }
-        return clickStatus;
+        return change;
+    }
+
+    Random random = new Random();
+
+    public List<Pos> randomClick() {
+        updateOpenBoard();
+        List<Pos> uk = new ArrayList<>();
+        for (int i = 0; i < game.getNumHeight(); i++) {
+            for (int j = 0; j < game.getNumWidth(); j++) {
+                if (openedBoard[i][j] == -1) {
+                    uk.add(new Pos(i, j));
+                }
+            }
+        }
+        int rd = random.nextInt(uk.size());
+        return new ArrayList<>(Collections.singletonList(uk.get(rd)));
     }
 
     public static void main(String[] args) {
         Logger logger = LogManager.getLogger();
-        Game game = new Game(4, 2, 1);
+        Game game = new Game(5, 5, 1);
         Auto auto = new Auto(game);
         try {
 //            int[][] board = {{1, 1, 1, 1, 1}, {9, 2, 1, 9, 1}, {9, 2, 2, 3, 3}, {1, 1, 2, 9, 9}, {0, 0, 2, 9, 9}};
             Field boardField = game.getClass().getDeclaredField("board");
             boardField.setAccessible(true);
-            int[][] board = {{1, 2, 2, 1}, {-1, -1, -1, -1}};
+            int[][] board = {{1, 1, 1, 1, 1}, {9, 1, 1, 9, 1}, {1, 1, 1, 1, 1}, {0, 1, 1, 1, 0}, {0, 1, 9, 1, 0}};
+            boolean[][] known = new boolean[board.length][board[0].length];
+            known[0] = new boolean[]{true, true, false, true, false};
             boardField.set(game, board);
             Field statusField = game.getClass().getDeclaredField("status");
             statusField.setAccessible(true);
             Game.Status[][] status = new Game.Status[board.length][board[0].length];
             for (int i = 0; i < board.length; i++) {
                 for (int j = 0; j < board[0].length; j++) {
-                    status[i][j] = board[i][j] == -1 ? Game.Status.UK : Game.Status.OPENED;
+                    status[i][j] = known[i][j] ? Game.Status.OPENED : Game.Status.UK;
                 }
             }
             statusField.set(game, status);
         } catch (Exception e) {
             logger.error("{}", e.getMessage(), e);
         }
-        ClickStatus clickStatus = auto.check();
-        for (Map.Entry<Pos, Integer> entry : clickStatus.getCell2update().entrySet()) {
-            System.out.println(entry.getKey() + "," + entry.getValue());
-        }
+//        HashSet<String> strings = new HashSet<>();
+//        for (String t : strings) {
+
     }
 }

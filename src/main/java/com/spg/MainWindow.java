@@ -1,11 +1,13 @@
 package com.spg;
 
+import com.spg.bean.Result;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Point2D;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -21,20 +23,23 @@ import javafx.util.Duration;
 import org.yaml.snakeyaml.Yaml;
 
 import java.net.URL;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 
 public class MainWindow extends Application {
     private Configure cfg;
     private Game game;
+    private Auto auto;
+    private Text timerText = new Text();
+    private Text safeLeftText = new Text();
     private ImageView[][] imageViews;
     private final Map<Integer, Image> imageMap = new HashMap<>();
     private boolean firstClick = true;
     // 毫秒
-    private int duration;
+    private int elapsed;
     private Timeline timeline;
     private boolean fail = false;
     private List<Pos> lastPressed;
@@ -70,7 +75,7 @@ public class MainWindow extends Application {
             }
         }
         game = new Game(cfg.getNumWidth(), cfg.getNumHeight(), cfg.getNumMine());
-
+        auto = new Auto(game);
     }
 
     private void setImage(Pos pos, int id) {
@@ -89,26 +94,43 @@ public class MainWindow extends Application {
         body.setPadding(new Insets(20, 20, 20, 20));
         HBox header = new HBox(50);
         // timer
-        Text timerText = new Text("0");
+        timerText = new Text();
         timerText.setFill(Color.RED);
         timerText.setFont(new Font(20));
-
-        // start button
-        Button startButton = new Button();
-        startButton.setPrefWidth(40);
-        startButton.setOnAction(actionEvent -> {
-            initial(timerText);
+        safeLeftText = new Text();
+        timerText.setFill(Color.BLACK);
+        timerText.setFont(new Font(20));
+        // reset button
+        Button resetButton = new Button();
+        resetButton.setPrefWidth(40);
+        resetButton.setOnAction(actionEvent -> {
+            initial();
         });
+        Button promptButton = new Button();
+        promptButton.setPrefWidth(40);
+        promptButton.setOnAction(actionEvent -> {
+            prompt();
+        });
+        Button autoButton = new Button();
+        autoButton.setPrefWidth(40);
+        autoButton.setOnAction(actionEvent -> {
+            initial();
+            autoPlay();
+        });
+
         header.getChildren().add(timerText);
-        header.getChildren().add(startButton);
+        header.getChildren().add(safeLeftText);
+        header.getChildren().add(resetButton);
+        header.getChildren().add(promptButton);
+        header.getChildren().add(autoButton);
         body.getChildren().add(header);
         body.getChildren().add(gridPane);
         timeline = new Timeline(new KeyFrame(Duration.millis(100), actionEvent -> {
-            duration += 100;
-            timerText.setText("" + duration / 1000);
+            elapsed += 100;
+            timerText.setText("" + elapsed / 1000);
         }));
         timeline.setCycleCount(Timeline.INDEFINITE);
-
+        initial();
         Scene scene = new Scene(body, cfg.getNumWidth() * cfg.getCellSize() + 40, cfg.getNumHeight() * cfg.getCellSize() + 80);
         scene.setFill(Color.GRAY);
         primaryStage.setTitle("Scalable GridPane spg");
@@ -127,9 +149,10 @@ public class MainWindow extends Application {
     }
 
     private void update(ClickStatus clickStatus) {
-        if (clickStatus == null) return;
+        if (clickStatus == null)
+            return;
         Map<Pos, Integer> cell2Update = clickStatus.getCell2update();
-        for (Entry<Pos, Integer> entry : cell2Update.entrySet()) {
+        for (Map.Entry<Pos, Integer> entry : cell2Update.entrySet()) {
             setImage(entry.getKey(), entry.getValue());
         }
     }
@@ -144,7 +167,21 @@ public class MainWindow extends Application {
         lastPressed = null;
     }
 
+    private void judge() {
+        safeLeftText.setText(String.valueOf(game.getSafeGridLeft()));
+        if (!game.success())
+            return;
+        Result result = new Result(1, elapsed / 1000., LocalDate.now());
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("统计信息");
+        alert.setHeaderText("header");
+        alert.setContentText(result.toString());
+        alert.show();
+    }
+
     private void mousePressed(MouseEvent event) {
+        if (game.success())
+            return;
         Pos pos = getPos(event);
         ClickStatus clickStatus;
         if (event.isSecondaryButtonDown() && !event.isPrimaryButtonDown()) {
@@ -170,6 +207,8 @@ public class MainWindow extends Application {
     }
 
     private void mouseDragged(MouseEvent event) {
+        if (game.success())
+            return;
         pressed2Up();
         Pos pos = getPos(event);
         ClickStatus clickStatus = null;
@@ -188,6 +227,8 @@ public class MainWindow extends Application {
     }
 
     private void mouseReleased(MouseEvent event) {
+        if (game.success())
+            return;
         pressed2Up();
         Pos pos = getPos(event);
         ClickStatus clickStatus = null;
@@ -207,16 +248,19 @@ public class MainWindow extends Application {
             }
             clickStatus = game.openOne(pos);
         }
+        judge();
         update(clickStatus);
     }
 
-    private void initial(Text timerText) {
+    private void initial() {
         timerText.setText("0");
+        safeLeftText.setText("381");
         timeline.stop();
-        duration = 0;
+        elapsed = 0;
         fail = false;
         firstClick = true;
         game = new Game(cfg.getNumWidth(), cfg.getNumHeight(), cfg.getNumMine());
+        auto.setGame(game);
         for (int i = 0; i < cfg.getNumHeight(); i++) {
             for (int j = 0; j < cfg.getNumWidth(); j++) {
                 setImage(new Pos(i, j), 10);
@@ -224,11 +268,49 @@ public class MainWindow extends Application {
         }
     }
 
+    private void prompt() {
+        List<Pos> check = auto.check();
+        ClickStatus clickStatus = new ClickStatus();
+        for (Pos posT : check) {
+            clickStatus.put(posT, 12);
+        }
+        update(clickStatus);
+    }
+
+    private void autoPlay() {
+        while (true) {
+            List<Pos> check = auto.check();
+            if (firstClick) {
+                check = auto.randomClick();
+                game.init(check.get(0));
+                firstClick = false;
+                timeline.play();
+            }
+            if (check.isEmpty()) {
+                check = auto.randomClick();
+            }
+            for (Pos posT : check) {
+                ClickStatus clickStatus = game.openOne(posT);
+                // TODO ui没法立刻刷新
+                update(clickStatus);
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                if (clickStatus.isFail())
+                    return;
+            }
+//            return;
+//            if (game.success())
+//                return;
+        }
+    }
+
     private GridPane createGridPane() {
         GridPane gridPane = new GridPane();
         for (int i = 0; i < cfg.getNumHeight(); i++) {
             for (int j = 0; j < cfg.getNumWidth(); j++) {
-                setImage(new Pos(i, j), 10);
                 gridPane.add(imageViews[i][j], j, i);
             }
         }
