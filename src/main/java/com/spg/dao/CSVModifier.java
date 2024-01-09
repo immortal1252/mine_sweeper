@@ -18,7 +18,9 @@ public class CSVModifier<T> {
     private final Class<T> clazz;
     private final String savePath;
 
+    //字符串映射到字段上
     private final Map<String, Field> name2field = new HashMap<>();
+    //数据视图
     private final List<T> data = new ArrayList<>();
 
     public CSVModifier(Class<T> clazz) throws Exception {
@@ -96,6 +98,7 @@ public class CSVModifier<T> {
     }
 
 
+    //写回文件
     public void close() throws IOException, IllegalAccessException {
         Path path = Paths.get(savePath);
         if (Files.notExists(path)) {

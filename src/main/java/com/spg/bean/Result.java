@@ -18,11 +18,10 @@ public class Result {
 
     @Override
     public String toString() {
-        return "Result{" +
-                "threeBV=" + threeBV +
+        return "{3bv=" + threeBV +
                 ", elapsed=" + elapsed +
                 ", date=" + date +
-                ", threeBVPS=" + threeBVPS +
+                ", 3bv/s=%.2f".formatted(threeBVPS) +
                 '}';
     }
 

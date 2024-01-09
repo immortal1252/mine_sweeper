@@ -10,6 +10,8 @@ import javafx.geometry.Point2D;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ListView;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
@@ -108,28 +110,34 @@ public class MainWindow extends Application {
         timerText.setFill(Color.BLACK);
         timerText.setFont(new Font(20));
         // reset button
-        Button resetButton = new Button();
-        resetButton.setPrefWidth(40);
+        Button resetButton = new Button("reset");
+        resetButton.setPrefHeight(40);
         resetButton.setOnAction(actionEvent -> {
             initial();
         });
-        Button promptButton = new Button();
-        promptButton.setPrefWidth(40);
+        Button historyButton = new Button("history");
+        historyButton.setPrefHeight(40);
+        historyButton.setOnAction(actionEvent -> {
+            showHistory();
+        });
+        Button promptButton = new Button("prompt");
+        promptButton.setPrefHeight(40);
         promptButton.setOnAction(actionEvent -> {
             prompt();
         });
-        Button autoButton = new Button();
-        autoButton.setPrefWidth(40);
-        autoButton.setOnAction(actionEvent -> {
-            initial();
-            autoPlay();
-        });
+//        Button autoButton = new Button();
+//        autoButton.setPrefWidth(40);
+//        autoButton.setOnAction(actionEvent -> {
+//            initial();
+//            autoPlay();
+//        });
 
         header.getChildren().add(timerText);
         header.getChildren().add(safeLeftText);
         header.getChildren().add(resetButton);
         header.getChildren().add(promptButton);
-        header.getChildren().add(autoButton);
+        header.getChildren().add(historyButton);
+//        header.getChildren().add(autoButton);
         body.getChildren().add(header);
         body.getChildren().add(gridPane);
         timeline = new Timeline(new KeyFrame(Duration.millis(100), actionEvent -> {
@@ -176,23 +184,45 @@ public class MainWindow extends Application {
 
     private void judge() {
         safeLeftText.setText(String.valueOf(game.getSafeGridLeft()));
-        if (!game.success())
-            return;
-        Result result = new Result(1, elapsed / 1000., LocalDate.now());
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("统计信息");
-        alert.setHeaderText("header");
-        alert.setContentText(result.toString());
-        alert.show();
-        try {
-            recordService.addSuccess(result);
-        } catch (Exception e) {
-            logger.error("{}", e.getMessage(), e);
+        //失败
+        if (fail) {
+            // 创建一个Alert对象
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setTitle("Confirmation Dialog");
+            alert.setHeaderText("Choose an option:");
+
+            // 添加两个按钮
+            ButtonType buttonMistake = new ButtonType("失误");
+            ButtonType buttonBadluck = new ButtonType("运气不好");
+            ButtonType passBadluck = new ButtonType("取消");
+
+            alert.getButtonTypes().setAll(buttonMistake, buttonBadluck, passBadluck);
+            alert.showAndWait().ifPresent(response -> {
+                if (response == buttonMistake) {
+                    recordService.addMistake();
+                } else if (response == buttonBadluck) {
+                    recordService.addBadluck();
+                }
+            });
+            initial();
+        } else if (game.success()) {
+            Result result = new Result(130, elapsed / 1000., LocalDate.now());
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("统计信息");
+            alert.setHeaderText("header");
+            alert.setContentText(result.toString());
+            alert.show();
+            try {
+                recordService.addSuccess(result);
+            } catch (Exception e) {
+                logger.error("{}", e.getMessage(), e);
+            }
+            initial();
         }
     }
 
     private void mousePressed(MouseEvent event) {
-        if (game.success())
+        if (game.success() || fail)
             return;
         Pos pos = getPos(event);
         ClickStatus clickStatus;
@@ -219,7 +249,7 @@ public class MainWindow extends Application {
     }
 
     private void mouseDragged(MouseEvent event) {
-        if (game.success())
+        if (game.success() || fail)
             return;
         pressed2Up();
         Pos pos = getPos(event);
@@ -239,11 +269,11 @@ public class MainWindow extends Application {
     }
 
     private void mouseReleased(MouseEvent event) {
-        if (game.success())
+        if (game.success() || fail)
             return;
         pressed2Up();
         Pos pos = getPos(event);
-        ClickStatus clickStatus = null;
+        ClickStatus clickStatus;
 
         if (event.isPrimaryButtonDown() || event.isSecondaryButtonDown()) {
             // double release
@@ -259,9 +289,12 @@ public class MainWindow extends Application {
                 timeline.play();
             }
             clickStatus = game.openOne(pos);
+        } else {
+            return;
         }
-        judge();
+        fail = clickStatus.isFail();
         update(clickStatus);
+        judge();
     }
 
     private void initial() {
@@ -317,6 +350,31 @@ public class MainWindow extends Application {
 //            if (game.success())
 //                return;
         }
+    }
+
+    private void showHistory() {
+        List<Result> maxThreeBVPS = recordService.getMaxThreeBVPS();
+        List<Result> minElapsed = recordService.getMinElapsed();
+        // 创建一个Label用于展示数值
+
+        ListView<String> listView = new ListView<>();
+        listView.getItems().add("最短时间");
+        listView.setMinWidth(400);
+        for (Result result : minElapsed) {
+            listView.getItems().add(result.toString());
+        }
+        listView.getItems().add("最大3bv/s");
+        for (Result result : maxThreeBVPS) {
+            listView.getItems().add(result.toString());
+        }
+        // 创建一个Alert对象
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("history");
+        alert.getDialogPane().setContent(listView);
+
+
+        // 显示对话框
+        alert.showAndWait();
     }
 
     private GridPane createGridPane() {
