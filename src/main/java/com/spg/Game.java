@@ -24,7 +24,8 @@ public class Game {
     private final int numHeight;
     private final int numMine;
     private int safeGridLeft;
-    private final int[][] board;
+    //    private final int[][] board;
+    public int[][] board;
     private final Status[][] status;
 
     private final int[][] next = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
@@ -183,6 +184,11 @@ public class Game {
         }
         clickStatus.setFail(fail);
         return clickStatus;
+    }
+
+    public int computeThreeBV() {
+        ComputeThreeBV func = new ComputeThreeBV(board);
+        return func.dfsCompute();
     }
 
     public int[][] getKnown() {

@@ -206,7 +206,8 @@ public class MainWindow extends Application {
             });
             initial();
         } else if (game.success()) {
-            Result result = new Result(130, elapsed / 1000., LocalDate.now());
+            int threeBV = game.computeThreeBV();
+            Result result = new Result(threeBV, elapsed / 1000., LocalDate.now());
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.setTitle("统计信息");
             alert.setHeaderText("header");
