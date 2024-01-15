@@ -51,6 +51,7 @@ public class MainWindow extends Application {
     private Timeline timeline;
     private boolean fail = false;
     private List<Pos> lastPressed;
+    private Pos lastEntered;
     private boolean leftAvailable = false;
 
     // 当且仅当左键按下后,再抬起才触发 单点
@@ -67,7 +68,7 @@ public class MainWindow extends Application {
             URL resource = getClass().getClassLoader().getResource(entry.getValue());
             if (resource == null) {
                 System.out.println("load error");
-                return;
+                throw new RuntimeException(entry.getValue() + " load error");
             }
             imageMap.put(entry.getKey(), new Image(resource.toURI().toString()));
         }
@@ -81,6 +82,8 @@ public class MainWindow extends Application {
                 imageViews[i][j].setOnMouseDragged(this::mouseDragged);
                 imageViews[i][j].setOnMouseReleased(this::mouseReleased);
                 imageViews[i][j].setOnMousePressed(this::mousePressed);
+                imageViews[i][j].setOnMouseEntered(this::mouseEnered);
+                imageViews[i][j].setOnMouseExited(this::mouseExited);
             }
         }
         game = new Game(cfg.getNumWidth(), cfg.getNumHeight(), cfg.getNumMine());
@@ -164,7 +167,8 @@ public class MainWindow extends Application {
     }
 
     private void update(ClickStatus clickStatus) {
-        if (clickStatus == null) return;
+        if (clickStatus == null)
+            return;
         Map<Pos, Integer> cell2Update = clickStatus.getCell2update();
         for (Map.Entry<Pos, Integer> entry : cell2Update.entrySet()) {
             setImage(entry.getKey(), entry.getValue());
@@ -230,8 +234,30 @@ public class MainWindow extends Application {
         }
     }
 
+    private void mouseEnered(MouseEvent event) {
+        if (game.success() || fail)
+            return;
+        Pos pos = getPos(event);
+        ClickStatus clickStatus = game.enter(pos);
+        if (!clickStatus.getCell2update().isEmpty()) {
+            lastEntered = pos;
+            update(clickStatus);
+        }
+    }
+
+    private void mouseExited(MouseEvent event) {
+        if (game.success() || fail)
+            return;
+        if (lastEntered != null) {
+            ClickStatus clickStatus = game.exit(lastEntered);
+            update(clickStatus);
+            lastEntered = null;
+        }
+    }
+
     private void mousePressed(MouseEvent event) {
-        if (game.success() || fail) return;
+        if (game.success() || fail)
+            return;
         Pos pos = getPos(event);
         ClickStatus clickStatus;
         if (event.isSecondaryButtonDown() && !event.isPrimaryButtonDown()) {
@@ -257,7 +283,8 @@ public class MainWindow extends Application {
     }
 
     private void mouseDragged(MouseEvent event) {
-        if (game.success() || fail) return;
+        if (game.success() || fail)
+            return;
         pressed2Up();
         Pos pos = getPos(event);
         ClickStatus clickStatus = null;
@@ -276,7 +303,8 @@ public class MainWindow extends Application {
     }
 
     private void mouseReleased(MouseEvent event) {
-        if (game.success() || fail) return;
+        if (game.success() || fail)
+            return;
         pressed2Up();
         Pos pos = getPos(event);
         ClickStatus clickStatus;
@@ -298,6 +326,7 @@ public class MainWindow extends Application {
         } else {
             return;
         }
+
         fail = clickStatus.isFail();
         update(clickStatus);
         judge();

@@ -110,6 +110,22 @@ public class Game {
         return clickStatus;
     }
 
+    public ClickStatus enter(Pos pos) {
+        ClickStatus clickStatus = new ClickStatus();
+        if (status[pos.r][pos.c] == Status.UK) {
+            clickStatus.put(pos, 13);
+        }
+        return clickStatus;
+    }
+
+    public ClickStatus exit(Pos pos) {
+        ClickStatus clickStatus = new ClickStatus();
+        if (status[pos.r][pos.c] == Status.UK) {
+            clickStatus.put(pos, 10);
+        }
+        return clickStatus;
+    }
+
     public ClickStatus pressOne(Pos pos) {
         ClickStatus clickStatus = new ClickStatus();
         int r = pos.r;
