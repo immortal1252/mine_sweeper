@@ -18,6 +18,7 @@ public class MetaInfo {
     @DataAnno(name = "当前连胜")
     private Integer currStreak = 0;
 
+
     public Integer getMaxWinStreak() {
         return maxWinStreak;
     }

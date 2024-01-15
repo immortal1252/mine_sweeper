@@ -179,7 +179,7 @@ public class Game {
             for (Pos posT : surround) {
                 ClickStatus clickStatusT = openOne(posT);
                 clickStatus.put(clickStatusT);
-                fail |= clickStatus.isFail();
+                fail |= clickStatusT.isFail();
             }
         }
         clickStatus.setFail(fail);

@@ -23,7 +23,7 @@ public class RecordService {
         return data.get(0);
     }
 
-    public void setMetaInfo(MetaInfo metaInfo) {
+    private void setMetaInfo(MetaInfo metaInfo) {
         List<MetaInfo> data = metaInfoCSVModifier.getData();
         if (data.isEmpty()) {
             data.add(metaInfo);
@@ -38,10 +38,10 @@ public class RecordService {
         metaInfo.setSuccess(metaInfo.getSuccess() + 1);
         if (metaInfo.getCurrStreak() >= 0) {
             metaInfo.setCurrStreak(metaInfo.getCurrStreak() + 1);
-            metaInfo.setMaxWinStreak(Integer.max(metaInfo.getMaxWinStreak(), metaInfo.getCurrStreak()));
         } else {
             metaInfo.setCurrStreak(1);
         }
+        metaInfo.setMaxWinStreak(Integer.max(metaInfo.getMaxWinStreak(), metaInfo.getCurrStreak()));
         setMetaInfo(metaInfo);
     }
 
@@ -50,10 +50,10 @@ public class RecordService {
         metaInfo.setMistake(metaInfo.getMistake() + 1);
         if (metaInfo.getCurrStreak() <= 0) {
             metaInfo.setCurrStreak(metaInfo.getCurrStreak() - 1);
-            metaInfo.setMaxLossStreak(Integer.max(metaInfo.getMaxLossStreak(), metaInfo.getCurrStreak()));
         } else {
             metaInfo.setCurrStreak(-1);
         }
+        metaInfo.setMaxLossStreak(Integer.min(metaInfo.getMaxLossStreak(), metaInfo.getCurrStreak()));
         setMetaInfo(metaInfo);
     }
 
@@ -62,10 +62,10 @@ public class RecordService {
         metaInfo.setBadluck(metaInfo.getBadluck() + 1);
         if (metaInfo.getCurrStreak() <= 0) {
             metaInfo.setCurrStreak(metaInfo.getCurrStreak() - 1);
-            metaInfo.setMaxLossStreak(Integer.max(metaInfo.getMaxLossStreak(), metaInfo.getCurrStreak()));
         } else {
             metaInfo.setCurrStreak(-1);
         }
+        metaInfo.setMaxLossStreak(Integer.min(metaInfo.getMaxLossStreak(), metaInfo.getCurrStreak()));
         setMetaInfo(metaInfo);
     }
 
@@ -103,10 +103,7 @@ public class RecordService {
         return getMax(resultComparator);
     }
 
-    public static void main(String[] args) throws Exception {
-        RecordService recordService = new RecordService();
-        List<Result> minElapsed = recordService.getMinElapsed();
-        List<Result> maxThreeBVPS = recordService.getMaxThreeBVPS();
+    public static void main(String[] args) {
         System.out.println();
     }
 

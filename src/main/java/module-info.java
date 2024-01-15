@@ -5,9 +5,9 @@ module com.spg {
     requires org.yaml.snakeyaml;
     requires org.apache.logging.log4j;
     requires com.opencsv;
-    requires junit;
     opens com.spg;
     opens media;
+    opens newmedia;
     exports com.spg;
     exports com.spg.bean;
     opens com.spg.bean;

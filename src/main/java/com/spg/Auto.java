@@ -4,10 +4,12 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class Auto {
-    private final Logger logger = LogManager.getLogger();
 
     class MineSet {
         Pos pos;
@@ -42,34 +44,9 @@ public class Auto {
         this.game = game;
     }
 
-    private void markMine() {
-//        // noflag标雷
-//        ClickStatus clickStatus = new ClickStatus();
-//        for (int i = 0; i < game.getNumHeight(); i++) {
-//            for (int j = 0; j < game.getNumWidth(); j++) {
-//                if (openedBoard[i][j] < 1 || openedBoard[i][j] > 8)
-//                    continue;
-//                MineSet mineSet = new MineSet(new Pos(i, j));
-////                ClickStatus clickStatusT = singleSet(mineSet);
-//                clickStatus.put(clickStatusT);
-//            }
-//        }
-//        return clickStatus;
-    }
 
     private void updateOpenBoard() {
-        int[][] known = game.getKnown();
-        if (openedBoard == null) {
-            openedBoard = known;
-        } else {
-            for (int i = 0; i < game.getNumHeight(); i++) {
-                for (int j = 0; j < game.getNumWidth(); j++) {
-                    if (openedBoard[i][j] == -1 || openedBoard[i][j] == -2) {
-                        openedBoard[i][j] = known[i][j];
-                    }
-                }
-            }
-        }
+        this.openedBoard = game.getKnown();
     }
 
     public List<Pos> check() {
@@ -196,26 +173,10 @@ public class Auto {
         return change;
     }
 
-    Random random = new Random();
-
-    public List<Pos> randomClick() {
-        updateOpenBoard();
-        List<Pos> uk = new ArrayList<>();
-        for (int i = 0; i < game.getNumHeight(); i++) {
-            for (int j = 0; j < game.getNumWidth(); j++) {
-                if (openedBoard[i][j] == -1) {
-                    uk.add(new Pos(i, j));
-                }
-            }
-        }
-        int rd = random.nextInt(uk.size());
-        return new ArrayList<>(Collections.singletonList(uk.get(rd)));
-    }
 
     public static void main(String[] args) {
         Logger logger = LogManager.getLogger();
         Game game = new Game(5, 5, 1);
-        Auto auto = new Auto(game);
         try {
 //            int[][] board = {{1, 1, 1, 1, 1}, {9, 2, 1, 9, 1}, {9, 2, 2, 3, 3}, {1, 1, 2, 9, 9}, {0, 0, 2, 9, 9}};
             Field boardField = game.getClass().getDeclaredField("board");

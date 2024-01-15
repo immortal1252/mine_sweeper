@@ -1,5 +1,6 @@
 package com.spg;
 
+import com.spg.bean.MetaInfo;
 import com.spg.bean.Result;
 import com.spg.service.RecordService;
 import javafx.animation.KeyFrame;
@@ -98,7 +99,14 @@ public class MainWindow extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-        GridPane gridPane = createGridPane();
+//        System.exit(-1);
+        GridPane gridPane = new GridPane();
+        for (int i = 0; i < cfg.getNumHeight(); i++) {
+            for (int j = 0; j < cfg.getNumWidth(); j++) {
+                gridPane.add(imageViews[i][j], j, i);
+            }
+        }
+
         VBox body = new VBox(20);
         body.setPadding(new Insets(20, 20, 20, 20));
         HBox header = new HBox(50);
@@ -112,32 +120,24 @@ public class MainWindow extends Application {
         // reset button
         Button resetButton = new Button("reset");
         resetButton.setPrefHeight(40);
-        resetButton.setOnAction(actionEvent -> {
-            initial();
-        });
+        resetButton.setOnAction(actionEvent -> initial());
         Button historyButton = new Button("history");
         historyButton.setPrefHeight(40);
         historyButton.setOnAction(actionEvent -> {
-            showHistory();
+            ListView<String> historyListView = getHistoryListView();
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.getDialogPane().setContent(historyListView);
+            alert.show();
         });
         Button promptButton = new Button("prompt");
         promptButton.setPrefHeight(40);
-        promptButton.setOnAction(actionEvent -> {
-            prompt();
-        });
-//        Button autoButton = new Button();
-//        autoButton.setPrefWidth(40);
-//        autoButton.setOnAction(actionEvent -> {
-//            initial();
-//            autoPlay();
-//        });
+        promptButton.setOnAction(actionEvent -> prompt());
 
         header.getChildren().add(timerText);
         header.getChildren().add(safeLeftText);
         header.getChildren().add(resetButton);
         header.getChildren().add(promptButton);
         header.getChildren().add(historyButton);
-//        header.getChildren().add(autoButton);
         body.getChildren().add(header);
         body.getChildren().add(gridPane);
         timeline = new Timeline(new KeyFrame(Duration.millis(100), actionEvent -> {
@@ -164,8 +164,7 @@ public class MainWindow extends Application {
     }
 
     private void update(ClickStatus clickStatus) {
-        if (clickStatus == null)
-            return;
+        if (clickStatus == null) return;
         Map<Pos, Integer> cell2Update = clickStatus.getCell2update();
         for (Map.Entry<Pos, Integer> entry : cell2Update.entrySet()) {
             setImage(entry.getKey(), entry.getValue());
@@ -208,23 +207,31 @@ public class MainWindow extends Application {
         } else if (game.success()) {
             int threeBV = game.computeThreeBV();
             Result result = new Result(threeBV, elapsed / 1000., LocalDate.now());
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("统计信息");
-            alert.setHeaderText("header");
-            alert.setContentText(result.toString());
-            alert.show();
+            String error = null;
             try {
                 recordService.addSuccess(result);
             } catch (Exception e) {
+                error = e.getMessage();
                 logger.error("{}", e.getMessage(), e);
             }
+            ListView<String> historyListView = getHistoryListView();
+            historyListView.getItems().add(0, result.toString());
+            historyListView.getItems().add(1, "");
+            if (error != null) {
+                historyListView.getItems().add(0, error);
+            }
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("统计信息");
+            alert.setHeaderText("header");
+
+            alert.getDialogPane().setContent(historyListView);
+            alert.showAndWait();
             initial();
         }
     }
 
     private void mousePressed(MouseEvent event) {
-        if (game.success() || fail)
-            return;
+        if (game.success() || fail) return;
         Pos pos = getPos(event);
         ClickStatus clickStatus;
         if (event.isSecondaryButtonDown() && !event.isPrimaryButtonDown()) {
@@ -250,8 +257,7 @@ public class MainWindow extends Application {
     }
 
     private void mouseDragged(MouseEvent event) {
-        if (game.success() || fail)
-            return;
+        if (game.success() || fail) return;
         pressed2Up();
         Pos pos = getPos(event);
         ClickStatus clickStatus = null;
@@ -270,8 +276,7 @@ public class MainWindow extends Application {
     }
 
     private void mouseReleased(MouseEvent event) {
-        if (game.success() || fail)
-            return;
+        if (game.success() || fail) return;
         pressed2Up();
         Pos pos = getPos(event);
         ClickStatus clickStatus;
@@ -323,70 +328,41 @@ public class MainWindow extends Application {
         update(clickStatus);
     }
 
-    private void autoPlay() {
-        while (true) {
-            List<Pos> check = auto.check();
-            if (firstClick) {
-                check = auto.randomClick();
-                game.init(check.get(0));
-                firstClick = false;
-                timeline.play();
-            }
-            if (check.isEmpty()) {
-                check = auto.randomClick();
-            }
-            for (Pos posT : check) {
-                ClickStatus clickStatus = game.openOne(posT);
-                // TODO ui没法立刻刷新
-                update(clickStatus);
-                try {
-                    Thread.sleep(500);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-                if (clickStatus.isFail())
-                    return;
-            }
-//            return;
-//            if (game.success())
-//                return;
-        }
-    }
 
-    private void showHistory() {
+    private ListView<String> getHistoryListView() {
         List<Result> maxThreeBVPS = recordService.getMaxThreeBVPS();
         List<Result> minElapsed = recordService.getMinElapsed();
-        // 创建一个Label用于展示数值
+        MetaInfo metaInfo = recordService.getMetaInfo();
 
         ListView<String> listView = new ListView<>();
-        listView.getItems().add("最短时间");
         listView.setMinWidth(400);
+
+        listView.getItems().add("统计信息");
+        int success = metaInfo.getSuccess();
+        int mistake = metaInfo.getMistake();
+        int badluck = metaInfo.getBadluck();
+        int total = success + mistake + badluck;
+        long successRatio = Math.round(100. * success / total);
+        long mistakeRatio = Math.round(100. * mistake / total);
+        long badluckRatio = Math.round(100. * badluck / total);
+        listView.getItems().add("胜场/失误/运气(%d,%d,%d),(%d%%/%d%%/%d%%)".formatted(success, mistake, badluck, successRatio, mistakeRatio, badluckRatio));
+        listView.getItems().add("最高连胜:%s,最高连败:%s,当前连胜:%s".formatted(metaInfo.getMaxWinStreak(), metaInfo.getMaxLossStreak(), metaInfo.getCurrStreak()));
+        listView.getItems().add("");
+
+        listView.getItems().add("最短时间");
         for (Result result : minElapsed) {
             listView.getItems().add(result.toString());
         }
+        listView.getItems().add("");
+
         listView.getItems().add("最大3bv/s");
         for (Result result : maxThreeBVPS) {
             listView.getItems().add(result.toString());
         }
-        // 创建一个Alert对象
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("history");
-        alert.getDialogPane().setContent(listView);
-
-
-        // 显示对话框
-        alert.showAndWait();
+        listView.getItems().add("");
+        return listView;
     }
 
-    private GridPane createGridPane() {
-        GridPane gridPane = new GridPane();
-        for (int i = 0; i < cfg.getNumHeight(); i++) {
-            for (int j = 0; j < cfg.getNumWidth(); j++) {
-                gridPane.add(imageViews[i][j], j, i);
-            }
-        }
-        return gridPane;
-    }
 
     @Override
     public void stop() throws Exception {
