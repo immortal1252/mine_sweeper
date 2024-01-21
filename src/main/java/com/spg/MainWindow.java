@@ -50,6 +50,7 @@ public class MainWindow extends Application {
     private int elapsed;
     private Timeline timeline;
     private boolean fail = false;
+    private final List<Pos> promptPos = new ArrayList<>();
     private List<Pos> lastPressed;
     private Pos lastEntered;
     private boolean leftAvailable = false;
@@ -171,6 +172,7 @@ public class MainWindow extends Application {
             return;
         Map<Pos, Integer> cell2Update = clickStatus.getCell2update();
         for (Map.Entry<Pos, Integer> entry : cell2Update.entrySet()) {
+            promptPos.remove(entry.getKey());
             setImage(entry.getKey(), entry.getValue());
         }
     }
@@ -336,6 +338,7 @@ public class MainWindow extends Application {
         timerText.setText("0");
         safeLeftText.setText("381");
         timeline.stop();
+        promptPos.clear();
         elapsed = 0;
         fail = false;
         firstClick = true;
@@ -349,12 +352,23 @@ public class MainWindow extends Application {
     }
 
     private void prompt() {
+        if (!promptPos.isEmpty()) {
+            ClickStatus clickStatus = new ClickStatus();
+            for (Pos posT : promptPos) {
+                clickStatus.put(posT, 10);
+            }
+            update(clickStatus);
+            promptPos.clear();
+            return;
+        }
+
         List<Pos> check = auto.check();
         ClickStatus clickStatus = new ClickStatus();
         for (Pos posT : check) {
             clickStatus.put(posT, 12);
         }
         update(clickStatus);
+        promptPos.addAll(check);
     }
 
 

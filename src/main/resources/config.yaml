@@ -1,7 +1,7 @@
 numWidth: 30
 numHeight: 16
 numMine: 99
-cellSize: 30
+cellSize: 33
 id2name:
   0: newmedia/cell0.png
   1: newmedia/cell1.png
@@ -10,8 +10,8 @@ id2name:
   4: newmedia/cell4.png
   5: newmedia/cell5.png
   6: newmedia/cell6.png
-  7: media/cell7.png
-  8: media/cell8.png
+  7: newmedia/cell7.png
+  8: newmedia/cell8.png
   9: newmedia/blast.png
   10: newmedia/cellup.png
   11: newmedia/cellflag.png
