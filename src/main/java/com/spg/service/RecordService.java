@@ -69,9 +69,9 @@ public class RecordService {
         setMetaInfo(metaInfo);
     }
 
-    public void close() throws IOException, IllegalAccessException {
-        metaInfoCSVModifier.close();
-        resultCSVModifier.close();
+    public void save() throws IOException, IllegalAccessException {
+        metaInfoCSVModifier.save();
+        resultCSVModifier.save();
     }
 
     private List<Result> getMax(Comparator<Result> comparator) {

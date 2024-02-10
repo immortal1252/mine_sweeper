@@ -99,7 +99,7 @@ public class CSVModifier<T> {
 
 
     //写回文件
-    public void close() throws IOException, IllegalAccessException {
+    public void save() throws IOException, IllegalAccessException {
         Path path = Paths.get(savePath);
         if (Files.notExists(path)) {
             Files.createFile(path);

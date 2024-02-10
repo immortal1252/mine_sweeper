@@ -28,6 +28,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.yaml.snakeyaml.Yaml;
 
+import java.io.IOException;
 import java.net.URL;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -187,11 +188,12 @@ public class MainWindow extends Application {
         lastPressed = null;
     }
 
-    private void judge() {
+    private void judge() throws IOException, IllegalAccessException {
         safeLeftText.setText(String.valueOf(game.getSafeGridLeft()));
         //失败
         if (fail) {
             // 创建一个Alert对象
+            timeline.stop();
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
             alert.setTitle("Confirmation Dialog");
             alert.setHeaderText("Choose an option:");
@@ -209,8 +211,8 @@ public class MainWindow extends Application {
                     recordService.addBadluck();
                 }
             });
-            initial();
         } else if (game.success()) {
+            timeline.stop();
             int threeBV = game.computeThreeBV();
             Result result = new Result(threeBV, elapsed / 1000., LocalDate.now());
             String error = null;
@@ -232,7 +234,10 @@ public class MainWindow extends Application {
 
             alert.getDialogPane().setContent(historyListView);
             alert.showAndWait();
+        }
+        if (fail || game.success()) {
             initial();
+            recordService.save();
         }
     }
 
@@ -331,7 +336,11 @@ public class MainWindow extends Application {
 
         fail = clickStatus.isFail();
         update(clickStatus);
-        judge();
+        try {
+            judge();
+        } catch (Exception e) {
+            logger.error("{}", e.getMessage(), e);
+        }
     }
 
     private void initial() {
@@ -410,7 +419,7 @@ public class MainWindow extends Application {
     @Override
     public void stop() throws Exception {
         super.stop();
-        recordService.close();
+        recordService.save();
     }
 
     public static void main(String[] args) {
